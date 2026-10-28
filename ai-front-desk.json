@@ -1,0 +1,283 @@
+{
+  "name": "AI Front Desk",
+  "nodes": [
+    {
+      "parameters": {
+        "public": true,
+        "mode": "webhook",
+        "options": {
+          "allowedOrigins": "*"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.5,
+      "position": [
+        0,
+        0
+      ],
+      "id": "caf14b3f-34b0-46b1-9fc1-56e9ec2fec4a",
+      "name": "When chat message received",
+      "webhookId": "c8506127-1303-48aa-bff6-feb5fcd8543e"
+    },
+    {
+      "parameters": {
+        "options": {
+          "systemMessage": "You are the front desk assistant for Demo Skin Clinic, a fictional clinic used for demonstrations.\n\nAnswer ONLY from the clinic information below. If the answer is not there, say a team member will reply shortly.\n\nNever give medical advice. Never say whether a treatment is right for someone's skin. If they ask anything medical, reply: \"That's a great question for our clinician. I've passed it on and someone will reply to you shortly.\" Then save their details with status \"handoff\".\n\nYour job: answer their question, then collect their name, phone number, the treatment they want, and a preferred day and time. When you have all four, save them with status \"new\" and confirm warmly that the team will contact them to fix the appointment.\n\nKeep replies short, warm and plain. Ask only one question at a time.\n\nCLINIC INFORMATION\nOpening hours: Monday to Saturday, 9am to 6pm.\nTreatments: chemical peel, microneedling, laser hair removal, skin consultation.\nA first skin consultation lasts 30 minutes.\nLocation: 12 Example Street, Sample City."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        224,
+        0
+      ],
+      "id": "ac95590e-e2b3-487a-a831-8973addc7d68",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-3.5-flash",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.2,
+      "position": [
+        208,
+        240
+      ],
+      "id": "d6c7d393-23f7-4848-969b-549b3e3667ba",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "XrZOjR590GqmFt3Z",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "contextWindowLength": 10
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.4,
+      "position": [
+        368,
+        240
+      ],
+      "id": "57490840-e255-4297-a1b0-1b4c63156d3a",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "schema": {
+          "__rl": true,
+          "mode": "list",
+          "value": "public"
+        },
+        "table": {
+          "__rl": true,
+          "value": "leads",
+          "mode": "list",
+          "cachedResultName": "leads"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "channel": "website",
+            "name": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('name', ``, 'string') }}",
+            "phone": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('phone', ``, 'string') }}",
+            "treatment": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('treatment', ``, 'string') }}",
+            "preferred_time": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('preferred_time', ``, 'string') }}",
+            "status": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('status', `Only use \"new\" when name, phone, treatment and preferred time are all collected. Use \"handoff\" when the person asked a medical question.`, 'string') }}"
+          },
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "created_at",
+              "displayName": "created_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "channel",
+              "displayName": "channel",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "name",
+              "displayName": "name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "phone",
+              "displayName": "phone",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "treatment",
+              "displayName": "treatment",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "preferred_time",
+              "displayName": "preferred_time",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "first_reply_seconds",
+              "displayName": "first_reply_seconds",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "alerted",
+              "displayName": "alerted",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "boolean",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "followed_up",
+              "displayName": "followed_up",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "boolean",
+              "canBeUsedToMatch": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgresTool",
+      "typeVersion": 2.8,
+      "position": [
+        560,
+        240
+      ],
+      "id": "0251b4a0-2d3c-4d3a-a17b-1ba5a8309c70",
+      "name": "Insert rows in a table in Postgres",
+      "credentials": {
+        "postgres": {
+          "id": "i8VQqBtJ3WSRAvGD",
+          "name": "Postgres account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When chat message received": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert rows in a table in Postgres": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "5121fd79-f680-4360-aec5-a5db21a762f2",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "e11b5cd2da3b1a65eced404ecc77f7ad6816f42d044fa8dbc40b78f6f8384c57"
+  },
+  "nodeGroups": [],
+  "id": "WquZqYMI2aiNI7n5",
+  "tags": []
+}
