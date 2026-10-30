@@ -1,0 +1,140 @@
+{
+  "name": "Staff Alert",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 1
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        0,
+        0
+      ],
+      "id": "6a626be4-20a2-48d8-821e-42b71a4286aa",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT * FROM leads WHERE alerted = false;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.8,
+      "position": [
+        224,
+        0
+      ],
+      "id": "b8a19439-62da-4a62-a7cd-acd66e9e91f4",
+      "name": "Execute a SQL query",
+      "credentials": {
+        "postgres": {
+          "id": "i8VQqBtJ3WSRAvGD",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "645536704",
+        "text": "=New enquiry: {{ $json.name }}, {{ $json.treatment }}, {{ $json.phone }}, status {{ $json.status }}",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        448,
+        0
+      ],
+      "id": "b55c3e33-339b-4cd5-b559-67719d1f5ba7",
+      "name": "Send a text message",
+      "webhookId": "dc5d5ea0-d62a-4a30-b179-f93ecd2694a0",
+      "credentials": {
+        "telegramApi": {
+          "id": "HBQ6suQMiId844lN",
+          "name": "Clinic Alerts Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE leads SET alerted = true WHERE id = {{ $('Execute a SQL query').item.json.id }};",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.8,
+      "position": [
+        672,
+        0
+      ],
+      "id": "882a3c6b-8f19-4d6f-891f-835d14e3876f",
+      "name": "Execute a SQL query1",
+      "credentials": {
+        "postgres": {
+          "id": "i8VQqBtJ3WSRAvGD",
+          "name": "Postgres account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Execute a SQL query",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute a SQL query": {
+      "main": [
+        [
+          {
+            "node": "Send a text message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a text message": {
+      "main": [
+        [
+          {
+            "node": "Execute a SQL query1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "593541a6-2c73-498b-884c-c0a6a80c94e6",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "e11b5cd2da3b1a65eced404ecc77f7ad6816f42d044fa8dbc40b78f6f8384c57"
+  },
+  "nodeGroups": [],
+  "id": "ZHjbQNibtt4DI3J4",
+  "tags": []
+}
