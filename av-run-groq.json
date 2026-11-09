@@ -1,0 +1,332 @@
+{
+  "name": "AV Run Groq",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        80
+      ],
+      "id": "f3c395a5-7846-4751-a762-777f5a3e16d1",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "   SELECT id AS prompt_id, prompt\n   FROM av_prompts\n   WHERE active = true\n   ORDER BY id;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.8,
+      "position": [
+        224,
+        80
+      ],
+      "id": "17a08e3d-4df8-404a-bc52-a16422fba9fc",
+      "name": "Execute a SQL query",
+      "credentials": {
+        "postgres": {
+          "id": "i8VQqBtJ3WSRAvGD",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "   const out = [];\n   for (const item of $input.all()) {\n     for (let r = 1; r <= 5; r++) {\n       out.push({\n         json: {\n           prompt_id: item.json.prompt_id,\n           prompt: item.json.prompt,\n           repeat_no: r\n         }\n       });\n     }\n   }\n   return out;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        448,
+        80
+      ],
+      "id": "7023278b-a409-463c-a487-873c4a7933ab",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        672,
+        80
+      ],
+      "id": "2e5619c2-c392-4c5c-918e-ae22b6a9556a",
+      "name": "Loop Over Items"
+    },
+    {
+      "parameters": {
+        "schema": {
+          "__rl": true,
+          "mode": "list",
+          "value": "public"
+        },
+        "table": {
+          "__rl": true,
+          "value": "av_runs",
+          "mode": "list",
+          "cachedResultName": "av_runs"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "prompt_id": "={{ $('Loop Over Items').item.json.prompt_id }}",
+            "sample_no": "={{ $('Loop Over Items').item.json.repeat_no }}",
+            "answer": "={{ $json.choices[0].message.content }}",
+            "model": "groq-gpt-oss-120b"
+          },
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "run_at",
+              "displayName": "run_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "prompt_id",
+              "displayName": "prompt_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "model",
+              "displayName": "model",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "sample_no",
+              "displayName": "sample_no",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "answer",
+              "displayName": "answer",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "extracted",
+              "displayName": "extracted",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "object",
+              "canBeUsedToMatch": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.8,
+      "position": [
+        1248,
+        0
+      ],
+      "id": "b9f97968-e720-4b37-95d0-449708a895a7",
+      "name": "Insert rows in a table",
+      "credentials": {
+        "postgres": {
+          "id": "i8VQqBtJ3WSRAvGD",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "amount": 25
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        1472,
+        80
+      ],
+      "id": "8cea4858-2a0d-4b4c-8ea7-a148ac8308e7",
+      "name": "Wait",
+      "webhookId": "5d5ed321-bc4c-47f1-a5ae-fec8600837ec"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT trim(model) AS model, COUNT(*) AS answers\nFROM av_runs\nGROUP BY 1\nORDER BY 1;\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.8,
+      "position": [
+        1120,
+        448
+      ],
+      "id": "b6e9c798-63f5-425c-88c6-b899352a396a",
+      "name": "Execute a SQL query1",
+      "credentials": {
+        "postgres": {
+          "id": "i8VQqBtJ3WSRAvGD",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.groq.com/openai/v1/chat/completions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"model\": \"openai/gpt-oss-120b\", \"messages\": [ { \"role\": \"user\", \"content\": $json.prompt } ], \"reasoning_effort\": \"low\", \"stream\": false } }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        896,
+        80
+      ],
+      "id": "faae05e2-a3bf-468c-b86a-a250329a3e79",
+      "name": "HTTP Request",
+      "retryOnFail": true,
+      "maxTries": 5,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "TO8T0TvBRgtshaja",
+          "name": "Groq API"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "Execute a SQL query",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute a SQL query": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items": {
+      "main": [
+        [],
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert rows in a table": {
+      "main": [
+        [
+          {
+            "node": "Wait",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Insert rows in a table",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "df68f65f-34ef-4649-a469-a4536ba6e7ec",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "e11b5cd2da3b1a65eced404ecc77f7ad6816f42d044fa8dbc40b78f6f8384c57"
+  },
+  "nodeGroups": [],
+  "id": "cnUxqUGtxPwhSqcv",
+  "tags": []
+}
