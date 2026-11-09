@@ -1,0 +1,247 @@
+{
+  "name": "AV Extract",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        80
+      ],
+      "id": "a0cde54c-9627-4931-8809-38475438affa",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "   SELECT id, answer\n   FROM av_runs\n   WHERE model = 'gemini-3.5-flash-lite'\n     AND prompt_id BETWEEN 1 AND 8\n     AND (extracted IS NULL OR extracted->>'status' = 'retry')\n   ORDER BY id;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.8,
+      "position": [
+        224,
+        80
+      ],
+      "id": "a1feed95-5777-404f-a481-2f5e0155dce7",
+      "name": "Execute a SQL query",
+      "credentials": {
+        "postgres": {
+          "id": "i8VQqBtJ3WSRAvGD",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        448,
+        80
+      ],
+      "id": "3f6adb84-12fc-4abf-930e-284a77210f29",
+      "name": "Loop Over Items"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "models/gemini-3.5-flash-lite",
+          "mode": "list",
+          "cachedResultName": "Gemini 3.5 Flash Lite"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=You are a data extractor. Read the ANSWER below and return JSON only, with no other text, in exactly this shape:\n{\"clinics\":[{\"name\":\"\",\"position\":1,\"location\":\"\"}],\"sources\":[]}\n\nRules:\n- List every clinic, hospital, salon or shop that the answer recommends as a place to get a treatment or a consultation, in the order each one first appears. position starts at 1.\n- Write each name exactly as the answer writes it, without extra words in brackets such as (Leeds) or (Leeds Clinic).\n- location is the area or street the answer gives for that place, or \"\" if none.\n- Do not include product brands, devices, regulators or organisations, for example Obagi, Dermapen, Candela, Medik8, CQC, Save Face, NHS.\n- sources is a list of any website links written in the answer, or [] if there are none.\n- Do not add anything that is not in the answer.\n\nANSWER:\n{{ $json.answer }}"
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1.2,
+      "position": [
+        672,
+        0
+      ],
+      "id": "8a0b87ca-a6cb-4058-a5e2-642a9aa83cfe",
+      "name": "Message a model",
+      "retryOnFail": true,
+      "maxTries": 5,
+      "waitBetweenTries": 1000,
+      "credentials": {
+        "googlePalmApi": {
+          "id": "XrZOjR590GqmFt3Z",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.first().json;\nconst id = $('Loop Over Items').first().json.id;\n\nlet raw = '';\ntry { raw = item.content.parts[0].text; } catch (e) { raw = ''; }\n\nconst cleaned = String(raw).replace(/```json/gi, '').replace(/```/g, '').trim();\n\nlet extracted;\ntry {\n  const p = JSON.parse(cleaned);\n  if (!Array.isArray(p.clinics)) throw new Error('no clinics list');\n  extracted = {\n    status: 'ok',\n    clinics: p.clinics,\n    sources: Array.isArray(p.sources) ? p.sources : []\n  };\n} catch (e) {\n  extracted = { status: 'retry', error: String(e.message || e) };\n}\n\nreturn [{ json: { id: id, extracted: JSON.stringify(extracted) } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1024,
+        0
+      ],
+      "id": "9a312e49-b348-472a-996b-049c2b28d874",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE av_runs\nSET extracted = $q$ {{ $json.extracted }} $q$::jsonb\nWHERE id = {{ $json.id }};\n\nSELECT id,\n       extracted->>'status' AS status,\n       jsonb_array_length(extracted->'clinics') AS clinics_found\nFROM av_runs\nWHERE id = {{ $json.id }};",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.8,
+      "position": [
+        1248,
+        0
+      ],
+      "id": "bedefb4d-7e5b-4c5a-b612-5679f5e3e794",
+      "name": "Execute a SQL query1",
+      "credentials": {
+        "postgres": {
+          "id": "i8VQqBtJ3WSRAvGD",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        1472,
+        80
+      ],
+      "id": "3922aedc-4e7e-47f6-ae63-c3681348db09",
+      "name": "Wait",
+      "webhookId": "1e55e677-2731-41c2-8340-827c963b0630"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT extracted->>'status' AS status, COUNT(*) AS answers\nFROM av_runs\nWHERE model = 'gemini-3.5-flash-lite'\n  AND prompt_id BETWEEN 1 AND 8\nGROUP BY 1;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.8,
+      "position": [
+        0,
+        304
+      ],
+      "id": "3b799e0d-4496-4748-a9c1-a3af78a7cc9a",
+      "name": "Execute a SQL query2",
+      "credentials": {
+        "postgres": {
+          "id": "i8VQqBtJ3WSRAvGD",
+          "name": "Postgres account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "Execute a SQL query",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute a SQL query": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Message a model",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Message a model": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Execute a SQL query1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute a SQL query1": {
+      "main": [
+        [
+          {
+            "node": "Wait",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "c97cfa26-f80f-4098-9606-472521bf2576",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "e11b5cd2da3b1a65eced404ecc77f7ad6816f42d044fa8dbc40b78f6f8384c57"
+  },
+  "nodeGroups": [],
+  "id": "gEMOv711crT2AcTw",
+  "tags": []
+}

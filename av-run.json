@@ -1,0 +1,338 @@
+{
+  "name": "AV Run",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        80
+      ],
+      "id": "41e62382-a7b7-417d-934f-b15d6db9de50",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "   SELECT id AS prompt_id, prompt\n   FROM av_prompts\n   WHERE active = true\n   ORDER BY id;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.8,
+      "position": [
+        224,
+        80
+      ],
+      "id": "b3d85d9b-bd8d-41d2-a51a-2f45129acca4",
+      "name": "Execute a SQL query",
+      "credentials": {
+        "postgres": {
+          "id": "i8VQqBtJ3WSRAvGD",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "   const out = [];\n   for (const item of $input.all()) {\n     for (let r = 1; r <= 5; r++) {\n       out.push({\n         json: {\n           prompt_id: item.json.prompt_id,\n           prompt: item.json.prompt,\n           repeat_no: r\n         }\n       });\n     }\n   }\n   return out;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        448,
+        80
+      ],
+      "id": "5b5c23e4-51a6-41c5-93c2-100e4bd7579d",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        672,
+        80
+      ],
+      "id": "6f995ac4-d644-46f0-993e-5e65a8fab81d",
+      "name": "Loop Over Items"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "models/gemini-3.5-flash-lite",
+          "mode": "list",
+          "cachedResultName": "Gemini 3.5 Flash Lite"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=     {{ $json.prompt }}"
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1.2,
+      "position": [
+        896,
+        0
+      ],
+      "id": "1f0eb468-af71-4233-8f18-a5c27b292b27",
+      "name": "Message a model",
+      "retryOnFail": true,
+      "maxTries": 5,
+      "waitBetweenTries": 1000,
+      "credentials": {
+        "googlePalmApi": {
+          "id": "XrZOjR590GqmFt3Z",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "schema": {
+          "__rl": true,
+          "mode": "list",
+          "value": "public"
+        },
+        "table": {
+          "__rl": true,
+          "value": "av_runs",
+          "mode": "list",
+          "cachedResultName": "av_runs"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "prompt_id": "={{ $('Loop Over Items').item.json.prompt_id }}",
+            "model": "gemini-3.5-flash",
+            "sample_no": "={{ $('Loop Over Items').item.json.repeat_no }}",
+            "answer": "={{ $json.content.parts[0].text }}"
+          },
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "run_at",
+              "displayName": "run_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "prompt_id",
+              "displayName": "prompt_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "model",
+              "displayName": "model",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "sample_no",
+              "displayName": "sample_no",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "answer",
+              "displayName": "answer",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "extracted",
+              "displayName": "extracted",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "object",
+              "canBeUsedToMatch": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.8,
+      "position": [
+        1248,
+        0
+      ],
+      "id": "bed26807-1650-4d02-a333-b9cd18f3f81a",
+      "name": "Insert rows in a table",
+      "credentials": {
+        "postgres": {
+          "id": "i8VQqBtJ3WSRAvGD",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        1472,
+        80
+      ],
+      "id": "266317ae-1a06-4ffc-be9f-b685288a2a64",
+      "name": "Wait",
+      "webhookId": "b8326ab6-b7e0-4043-b5e3-8590214e9ea3"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH totals AS (\n  SELECT model, COUNT(*) AS n\n  FROM av_runs\n  WHERE prompt_id BETWEEN 1 AND 8\n  GROUP BY model\n), hits AS (\n  SELECT r.model, m.clinic_name, COUNT(DISTINCT r.id) AS k\n  FROM av_runs r\n  JOIN av_mentions m ON m.run_id = r.id\n  WHERE r.prompt_id BETWEEN 1 AND 8\n  GROUP BY r.model, m.clinic_name\n), all_rows AS (\n  SELECT t.model, c.name AS clinic_name, c.is_target, COALESCE(h.k, 0) AS k, t.n\n  FROM totals t\n  CROSS JOIN av_clinics c\n  LEFT JOIN hits h ON h.model = t.model AND h.clinic_name = c.name\n)\nSELECT model, clinic_name, is_target, k, n,\n  ROUND(k::numeric / n, 3) AS share,\n  ROUND(((k::numeric/n) + 1.92/n - 1.96*sqrt((k::numeric/n)*(1-k::numeric/n)/n + 0.9604/(n*n))) / (1 + 3.8416/n), 3) AS low,\n  ROUND(((k::numeric/n) + 1.92/n + 1.96*sqrt((k::numeric/n)*(1-k::numeric/n)/n + 0.9604/(n*n))) / (1 + 3.8416/n), 3) AS high\nFROM all_rows\nWHERE model = 'gemini-3.5-flash-lite'\nORDER BY share DESC, clinic_name;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.8,
+      "position": [
+        1120,
+        448
+      ],
+      "id": "47c7f13b-f9bc-414e-8a31-33fca57888f6",
+      "name": "Execute a SQL query1",
+      "credentials": {
+        "postgres": {
+          "id": "i8VQqBtJ3WSRAvGD",
+          "name": "Postgres account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "Execute a SQL query",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute a SQL query": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Message a model",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Message a model": {
+      "main": [
+        [
+          {
+            "node": "Insert rows in a table",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert rows in a table": {
+      "main": [
+        [
+          {
+            "node": "Wait",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "1794a7ee-f3d1-4d0a-b22d-d1e3804cbec1",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "e11b5cd2da3b1a65eced404ecc77f7ad6816f42d044fa8dbc40b78f6f8384c57"
+  },
+  "nodeGroups": [],
+  "id": "qcBqycGCIwB4JNJ9",
+  "tags": []
+}
